@@ -3,6 +3,7 @@ import urllib.parse
 import json
 import os
 from dotenv import load_dotenv
+load_dotenv()
 
 # ---------------------------------------------------------
 # 1. 네이버 API 엔진 (K-Food 철벽 방어막 유지)

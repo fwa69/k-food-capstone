@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Korea Food AI 추천</title>
+    <style>
+        /* 1. 기본 설정 */
+        body {
+            margin: 0;
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            overflow: hidden; 
+        }
+
+        /* 2. 상단 네비게이션 바 */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            padding: 15px 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }
+
+        .navbar__logo {
+            font-size: 28px;
+            font-weight: 900;
+            color: #5a3a31; 
+            text-decoration: none;
+        }
+
+        .navbar__menu {
+            font-size: 18px;
+            font-weight: bold;
+            color: #5a3a31;
+            text-decoration: none;
+        }
+
+        /* 3. 메인 배경 화면 */
+        .hero {
+            position: relative;
+            height: calc(100vh - 65px); 
+            background-image: url('image/gyeongbokgung-palace-night-seoul-korea.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.2); 
+            pointer-events: none;
+        }
+
+        /* 4. 중앙 콘텐츠 영역 */
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 50px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .text-section {
+            flex: 1;
+            text-align: center;
+            color: #111;
+        }
+
+        .text-section h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8), -1px -1px 4px rgba(255, 255, 255, 0.8);
+        }
+
+        .text-section p {
+            font-size: 20px;
+            font-weight: bold;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8), -1px -1px 4px rgba(255, 255, 255, 0.8);
+        }
+
+        /* 5. 들어가기 버튼 */
+        .enter-btn {
+            padding: 12px 50px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: rgba(188, 175, 195, 0.8); 
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .enter-btn:hover {
+            background-color: rgba(188, 175, 195, 1);
+            transform: scale(1.05); 
+        }
+
+        /* 6. 우측 이미지 영역 */
+        .image-section {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .food-badge {
+            width: 250px; 
+            margin-bottom: 10px;
+        }
+
+        .food-text {
+            font-size: 16px;
+            font-weight: bold;
+            font-style: italic;
+            color: #111;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        /* 7. 우측 하단 한/영 변환 버튼 */
+       .lang-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            padding: 8px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: transparent;
+            border: 2px solid #333;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 2;
+            color: #333;             
+            text-decoration: none;   
+        }
+
+        .lang-btn:hover {
+            background-color: #333;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="navbar__logo">korea food</a>
+    </nav>
+
+    <main class="hero">
+        <div class="content-wrapper">
+            <div class="text-section">
+                <h1>음식 이미지 인식과 사용자 위치 기반 한식 음식점 추천 웹 시스템</h1>
+                <p>음식 이미지를 분석하여 메뉴를 분류하고, 사용자 위치 기반으로 주변 한식<br>맛집을 추천합니다.</p>
+                <!-- 🚀 한국어 앱(app.html)으로 이동하는 버튼 -->
+                <a href="app.html" class="enter-btn" style="text-decoration: none; display: inline-block; text-align: center;">들어가기</a>
+            </div>
+
+            <div class="image-section">
+                <img src="image/bibimbap.png" alt="비빔밥 일러스트" class="food-badge">
+                <div class="food-text">— KOREAN FOOD —</div>
+            </div>
+        </div>
+
+        <!-- 🚀 영어 메인 홈(homeENG.html)으로 이동하는 토글 버튼 -->
+        <a href="homeENG.html" class="lang-btn" style="text-decoration: none; text-align: center; display: inline-block; box-sizing: border-box;">🇺🇸 ENG (English)</a>
+    </main>
+
+</body>
+</html>

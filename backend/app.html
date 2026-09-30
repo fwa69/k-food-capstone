@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>K-Food AI 맛집 추천</title>
+ <style>
+ /* ==========================================
+ 🎨 1. 전체 레이아웃 및 CSS 스타일링 영역
+ ========================================== */
+ 
+ /* body: 전체 화면의 여백을 없애고, 화면을 위아래(네비게이션-메인)로 꽉 차게 나눕니다. */
+ body { margin: 0; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; display: flex; flex-direction: column; height: 100vh; }
+ 
+ /* navbar: 화면 최상단 네비게이션 바. 그림자(box-shadow)를 살짝 줘서 입체감을 살렸습니다. */
+ .navbar { display: flex; justify-content: space-between; align-items: center; background-color: white; padding: 15px 40px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 10; }
+ .navbar__logo { font-size: 28px; font-weight: 900; color: #5a3a31; text-decoration: none; }
+ .navbar__menu { font-size: 18px; font-weight: bold; color: #5a3a31; text-decoration: none; }
+ 
+ /* main-container: 네비게이션 아래쪽 전체 영역. flex: 1을 주어 남은 공간을 모두 차지하게 합니다. */
+ .main-container { display: flex; flex: 1; overflow: hidden; }
+ 
+ /* 📍 left-panel: 왼쪽 사용자 조작 영역. 
+ 외국인 사용자가 복잡함 없이 직관적으로 조작할 수 있도록 350px의 적당한 너비와 여백을 주었습니다. */
+ .left-panel { width: 350px; background-color: #F7EFE9; padding: 30px; display: flex; flex-direction: column; gap: 30px; box-sizing: border-box; overflow-y: auto; }
+ 
+ /* 🚀 [캡스톤 차별성] upload-box: 텍스트 검색을 대체하는 '이미지 업로드 UI'
+ 점선 테두리(dashed)를 사용해 외국인도 "여기에 무언가 넣는구나"라고 직관적으로 알 수 있게 디자인(Affordance)했습니다. */
+ .upload-box { background-color: #E6E8F4; border-radius: 8px; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; border: 2px dashed transparent; position: relative; min-height: 250px; }
+ .upload-box:hover { border: 2px dashed #4A55A2; } /* 마우스 올렸을 때 반응 */
+ .upload-icon { font-size: 50px; color: #4A55A2; margin-bottom: 10px; }
+ .upload-text { font-size: 18px; font-weight: bold; color: #111; }
+ 
+ /* location-search: 검색창 스타일링. 깔끔하게 둥근 모서리(border-radius)를 적용했습니다. */
+ .location-search h3 { margin: 0 0 10px 0; font-size: 18px; color: #111; }
+ .search-box { display: flex; gap: 10px; }
+ .search-box input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; }
+ .search-box button { background-color: #4A55A2; color: white; border: none; padding: 0 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+ 
+ /* submit-btn: 가장 중요한 'AI 분석 실행' 버튼. 시선을 확 끌 수 있도록 굵고 큰 폰트를 썼습니다. */
+ .submit-btn { background-color: #5a3a31; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+ .submit-btn:hover { background-color: #3e2822; }
+ 
+ /* right-panel: 오른쪽 네이버 지도가 렌더링될 공간입니다. */
+ .right-panel { flex: 1; background-color: #E9ECFB; position: relative; }
+ #map { width: 100%; height: 100%; }
+ 
+ /* 커스텀 스크롤바: 디자인 퀄리티를 높이기 위해 투박한 기본 스크롤바를 예쁘게 바꿨습니다. */
+ .left-panel::-webkit-scrollbar { width: 8px; }
+ .left-panel::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 10px; }
+ </style>
+</head>
+<body>
+
+ <!-- 상단 로고 및 홈 버튼 영역 -->
+ <nav class="navbar">
+ <a href="index.html" class="navbar__logo">korea food</a>
+ <a href="index.html" class="navbar__menu">홈</a>
+ </nav>
+
+ <div class="main-container">
+ <!-- ==========================================
+ 🖥️ 2. HTML 구조 (왼쪽: 입력창 / 오른쪽: 지도)
+ ========================================== -->
+ 
+ <!-- [왼쪽 패널 시작] -->
+ <div class="left-panel">
+ 
+ <!-- 이미지 업로드 영역: 
+ 겉보기엔 박스지만, 클릭하면 숨겨져 있는 <input type="file">이 대신 눌리게 꼼수(트릭)를 썼습니다. -->
+ <div class="upload-box" id="uploadBox" style="overflow: hidden;">
+ <div class="upload-icon" id="uploadIcon">🔗</div>
+ <div class="upload-text" id="uploadText">이미지를 넣어주세요</div>
+ <!-- 사용자가 사진을 올리면 이 <img> 태그에 미리보기가 뜹니다. 처음엔 숨겨둡니다(display: none) -->
+ <img id="imagePreview" src="" alt="미리보기" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+ <!-- 진짜 파일 업로드 버튼 (디자인이 안 예뻐서 숨겨둠) -->
+ <input type="file" id="fileInput" accept="image/*" style="display: none;">
+ </div>
+
+ <!-- 수동 지역 검색 영역 -->
+ <div class="location-search">
+ <h3>📍 원하는 지역 검색</h3>
+ <div class="search-box">
+ <!-- 엔터키(keyCode==13)를 쳐도 바로 검색되도록 UX를 배려했습니다. -->
+ <input type="text" id="addressInput" placeholder="예: 서울 강남구, 군산시 나운동"
+ onkeypress="if(event.keyCode==13) searchAddress()">
+ <button onclick="searchAddress()">이동</button>
+ </div>
+ </div>
+
+ <!-- 서버 통신 버튼 -->
+ <button class="submit-btn" onclick="runAIAnalysis()">AI 분석 & 맛집 찾기</button>
+ </div>
+ <!-- [왼쪽 패널 끝] -->
+
+ <!-- [오른쪽 패널 시작] 이 빈 div 안에 네이버 지도가 쏙 들어갑니다. -->
+ <div class="right-panel">
+ <div id="map"></div>
+ </div>
+ </div>
+
+ <!-- ==========================================
+ ⚙️ 3. 자바스크립트 (네이버 지도 & 프론트-백엔드 통신 로직)
+ ========================================== -->
+ 
+ <!-- 네이버 지도 API 불러오기 (운찬님 발급 키 적용 완료) -->
+ <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=6iyf1z5jcd"></script>
+ <!-- 주소(글자)를 좌표(숫자)로 바꿔주는 Geocoder 도구 불러오기 -->
+ <script src="https://oapi.map.naver.com/openapi/v3/maps-geocoder.js?ncpKeyId=6iyf1z5jcd"></script>
+
+ <script>
+ // --- [전역 변수 선언] ---
+ let map; // 네이버 지도 객체를 담을 그릇
+ let searchMarker = null; // 내가 검색한 동네를 찍어줄 기본 빨간 마커
+ let restaurantMarkers = []; // AI가 찾아준 맛집 1~5위 마커들을 담을 배열 (나중에 한 번에 지우기 위해 필요함)
+ let selectedImageFile = null; // 사용자가 올린 음식 사진 파일 데이터
+ let activeInfoWindow; // 맛집 클릭하면 뜨는 정보 팝업창 (메모리 낭비 막으려고 딱 1개만 돌려씀)
+
+ // --- [지도 초기 세팅] 웹페이지가 켜지면 무조건 먼저 실행되는 부분 ---
+ document.addEventListener("DOMContentLoaded", function() {
+ // 1. 처음에 지도가 뜰 때 군산대학교를 중심으로 보여주기 (zoom: 15는 줌 레벨)
+ const mapOptions = {
+ center: new naver.maps.LatLng(35.9453, 126.6821),
+ zoom: 15
+ };
+ map = new naver.maps.Map('map', mapOptions);
+
+ // 2. 팝업창(InfoWindow) 껍데기 하나 미리 만들어두기. (스타일 커스텀을 위해 테두리, 배경 없앰)
+ activeInfoWindow = new naver.maps.InfoWindow({
+ borderWidth: 0,
+ backgroundColor: "transparent",
+ disableAnchor: true
+ });
+
+ // 3. 지도 빈 공간 클릭하면 열려있던 맛집 팝업창 닫히게 하기 (소소하지만 중요한 UX 배려)
+ naver.maps.Event.addListener(map, 'click', function(e) {
+ if (activeInfoWindow.getMap()) {
+ activeInfoWindow.close();
+ }
+ });
+
+ // 4. 브라우저 위치 권한 허용하면, 내 현재 진짜 위치로 지도 중심 이동시켜주기
+ if (navigator.geolocation) {
+ navigator.geolocation.getCurrentPosition(function(position) {
+ const lat = position.coords.latitude;
+ const lng = position.coords.longitude;
+ const myLocation = new naver.maps.LatLng(lat, lng);
+ map.setCenter(myLocation); // 내 위치로 이동!
+ 
+ // 내 위치에 예쁜 파란색 동그라미 마커 찍어주기
+ new naver.maps.Marker({
+ position: myLocation,
+ map: map,
+ icon: {
+ content: '<div style="width:16px;height:16px;background:#007AFF;border-radius:50%;border:2px solid white;box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>',
+ anchor: new naver.maps.Point(8, 8)
+ }
+ });
+ });
+ }
+ });
+
+ // --- [수동 지역 검색 기능] 사용자가 텍스트로 동네 칠 때 작동 ---
+ function searchAddress() {
+ if (!naver.maps.Service) {
+ alert('지도 API가 아직 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+ return;
+ }
+
+ const raw = document.getElementById('addressInput').value.trim();
+ if (!raw) { alert('검색할 주소나 동네 이름을 입력해주세요!'); return; }
+ // '나운 1동'처럼 잘못 띄어쓰기한 걸 '나운1동'으로 고쳐주는 정규식 꼼수
+ const address = raw.replace(/(\S)\s+(\d)/g, '$1$2');
+
+ // 검색된 좌표에 빨간 점 마커 찍어주는 내부 함수
+ function placeMarker(y, x) {
+ const newLocation = new naver.maps.LatLng(y, x); 
+ map.setCenter(newLocation);
+ map.setZoom(15); 
+ if (searchMarker !== null) searchMarker.setMap(null); // 예전 마커 지우기
+ searchMarker = new naver.maps.Marker({
+ position: newLocation,
+ map: map,
+ icon: {
+ content: '<div style="width:16px;height:16px;background:#FF3B30;border-radius:50%;border:2px solid white;box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>',
+ anchor: new naver.maps.Point(8, 8)
+ }
+ });
+ }
+
+ // 네이버 Geocode API: "군산시 나운동" 이라는 글씨를 위도/경도 숫자로 바꿔서 서버에 물어봄
+ naver.maps.Service.geocode({ query: address }, function(status, response) {
+ if (status === naver.maps.Service.Status.OK && response.v2.meta.totalCount > 0) {
+ const item = response.v2.addresses[0];
+ placeMarker(item.y, item.x); // 성공하면 마커 찍기
+ } else {
+ // 혹시 실패하면 앞에 "전북 군산시 "를 강제로 붙여서 한 번 더 시도해 봄 (방어 코드)
+ const fallback = '전북 군산시 ' + address;
+ naver.maps.Service.geocode({ query: fallback }, function(status2, response2) {
+ if (status2 === naver.maps.Service.Status.OK && response2.v2.meta.totalCount > 0) {
+ const item2 = response2.v2.addresses[0];
+ placeMarker(item2.y, item2.x);
+ } else {
+ alert('주소를 찾을 수 없습니다.\n"군산시 나운1동" 처럼 시 이름을 함께 입력해보세요.');
+ }
+ });
+ }
+ });
+ }
+
+ // --- [이미지 미리보기 기능] ---
+ const uploadBox = document.getElementById('uploadBox');
+ const fileInput = document.getElementById('fileInput');
+ const imagePreview = document.getElementById('imagePreview');
+ const uploadIcon = document.getElementById('uploadIcon');
+ const uploadText = document.getElementById('uploadText');
+
+ // 예쁜 박스를 누르면, 사실은 못생긴 숨겨진 input 태그가 눌리게 연결
+ uploadBox.addEventListener('click', () => fileInput.click());
+ 
+ // 파일이 들어왔을 때 발생하는 이벤트
+ fileInput.addEventListener('change', (e) => {
+ const file = e.target.files[0];
+ if (file) {
+ selectedImageFile = file; // 백엔드로 보낼 파일 변수에 저장!
+ 
+ // FileReader: 브라우저 자체적으로 이미지를 읽어서 화면에 띄워주는 도구
+ const reader = new FileReader();
+ reader.onload = (event) => {
+ imagePreview.src = event.target.result; // 미리보기 이미지 소스 교체
+ imagePreview.style.display = 'block'; // 이미지 보이기
+ uploadIcon.style.display = 'none'; // 기존 아이콘 숨기기
+ uploadText.style.display = 'none'; // 기존 글자 숨기기
+ };
+ reader.readAsDataURL(file); 
+ }
+ });
+
+ // ==========================================
+ // 🚀 [가장 핵심 파이프라인] 버튼 누르면 파이썬 백엔드로 데이터 쏘기
+ // ==========================================
+ async function runAIAnalysis() {
+ if (!selectedImageFile) { 
+ alert('이미지를 먼저 업로드해주세요!');
+ return;
+ }
+ 
+ const submitBtn = document.querySelector('.submit-btn');
+ submitBtn.innerText = "⏳ 현재 지도의 위치를 파악 중입니다..."; // 버튼 글씨 바꿔서 진행 상황 알림 (UX 배려)
+
+ // 현재 화면 지도의 중심점을 주소(글씨)로 바꿔오는 함수
+ const getMapAddress = () => {
+ return new Promise((resolve) => {
+ const addressVal = document.getElementById('addressInput').value.trim();
+ if (addressVal) {
+ resolve(addressVal); // 검색창에 친 게 있으면 그거 씀
+ } else {
+ // 네이버 역지오코딩: 현재 좌표를 주소로 바꿔줌
+ naver.maps.Service.reverseGeocode({
+ coords: map.getCenter()
+ }, function(status, response) {
+ if (status === naver.maps.Service.Status.OK && response.v2.results.length > 0) {
+ const region = response.v2.results[0].region;
+ const exactAddress = `${region.area2.name} ${region.area3.name}`.trim();
+ resolve(exactAddress); // 성공하면 "군산시 나운동" 뱉음
+ } else {
+ resolve("군산"); // 실패하면 기본값 군산
+ }
+ });
+ }
+ });
+ };
+
+ try {
+ const searchLocation = await getMapAddress(); // 주소 알아올 때까지 기다림(await)
+ submitBtn.innerText = "⏳ 랭킹 알고리즘 가동 중..."; 
+
+ // 📦 백엔드(FastAPI)로 보낼 소포(FormData) 꾸리기
+ const formData = new FormData();
+ formData.append("file", selectedImageFile); // 1. 사진 파일
+ formData.append("location", searchLocation); // 2. 검색할 지역
+ 
+ const currentCenter = map.getCenter();
+ formData.append("user_lat", currentCenter.y || currentCenter.lat()); // 3. 내 위도
+ formData.append("user_lon", currentCenter.x || currentCenter.lng()); // 4. 내 경도 (거리 계산용)
+
+ // 🚀 파이썬 서버(/predict)로 소포 전송!!
+ const response = await fetch("/predict", {
+ method: "POST",
+ body: formData
+ });
+
+ // 파이썬이 분석 끝내고 보내준 결과물(JSON) 까보기
+ const result = await response.json();
+
+ if (result.success) {
+ alert(`✨ AI 분석 완료: '${result.food_name}'(으)로 인식되었습니다!`); 
+
+ // 기존 지도에 열려있던 팝업이랑 예전 마커들 전부 싹 청소하기
+ if(activeInfoWindow.getMap()) activeInfoWindow.close();
+ restaurantMarkers.forEach(m => m.setMap(null));
+ restaurantMarkers = []
+
+ const realRestaurants = result.restaurants;
+
+ if (realRestaurants.length === 0) { 
+ alert("해당 지역 주변에 맛집 정보를 찾을 수 없습니다."); 
+ return;
+ }
+
+ // 파이썬이 보내준 1~5위 맛집 데이터를 하나씩 돌면서 지도에 마커 찍기 (forEach 반복문)
+ realRestaurants.forEach((place, index) => {
+ // 주소를 다시 좌표로 바꿔서 지도 위에 올릴 준비
+ naver.maps.Service.geocode({ query: place.address }, function(status, res) {
+ if (status !== naver.maps.Service.Status.OK || res.v2.meta.totalCount === 0) return; 
+
+ var item = res.v2.addresses[0];
+ var position = new naver.maps.LatLng(item.y, item.x);
+ 
+ // HTML 특수문자 깨진 거 예쁘게 원상복구
+ const cleanName = place.name.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+ // 🌟 [캡스톤 차별성] 수십 개 던져주지 않고, 1~5위만 메달 달아서 줌 (선택 피로도 하락)
+ const rankColors = ["#FFD700", "#C0C0C0", "#CD7F32", "#4A55A2", "#5a3a31"]; // 1,2,3위 금은동 색깔
+ const rankMedal = index < 5 ? `<span style="background:${rankColors[index]}; color:white; padding:2px 6px; border-radius:10px; font-size:11px; margin-right:5px;">${index+1}위</span>` : '';
+
+ // 주황색 둥근 말풍선 모양의 커스텀 마커 생성
+ var rMarker = new naver.maps.Marker({
+ position: position,
+ map: map,
+ title: cleanName,
+ icon: {
+ content: `<div style="background-color:#ff5e00; color:white; padding:5px 10px; border-radius:20px; font-weight:bold; font-size:13px; box-shadow: 2px 2px 4px rgba(0,0,0,0.3); border:2px solid white;">${rankMedal}${cleanName}</div>`,
+ anchor: new naver.maps.Point(50, 15), // 마커 꼬리가 가리킬 뾰족한 점의 위치 조정
+ zIndex: 100 - index // 1위 마커가 다른 마커보다 항상 위(앞)에 오도록 설정!
+ }
+ });
+
+ // 마커를 클릭했을 때 팝업창(InfoWindow) 뜨게 하는 이벤트 연결
+ naver.maps.Event.addListener(rMarker, "click", function() {
+ // 외부 네이버 지도 리뷰용 링크 만들기 (예: 나운동 상록회관)
+ const shortRegion = place.address.split(' ').slice(0, 2).join(' ');
+ const exactSearchQuery = `${shortRegion} ${cleanName}`;
+
+ // 🌟 [캡스톤 차별성] 외국인을 위한 "음식 뱃지" 렌더링
+ // 파이썬이 보내준 result.badges 리스트를 돌면서 예쁜 HTML <span> 태그로 조립함.
+ // (된장찌개, 청국장 구별 못하는 외국인에게 완벽한 설명 제공)
+ let badgesHtml = '';
+ if (result.badges && result.badges.length > 0) {
+ badgesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;">' +
+ result.badges.map(b => `<span style="background: #F7EFE9; color: #5a3a31; font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: bold; border: 1px solid #E6D5C3;">${b}</span>`).join('') +
+ '</div>';
+ }
+
+ // 팝업창 안에 들어갈 내용물(HTML) 디자인. 
+ // 복잡한 '찜 기능'과 억울하게 점수가 깎일 수 있는 '별점'을 과감히 제거하여 시선 분산 막음!
+ const contentHtml = `
+ <div style="background-color: white; padding:15px; width:260px; text-align:center; border-radius:10px; font-family: sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #ddd;">
+ <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+ <h4 style="margin:0; color:#111; font-size:16px; flex:1; text-align:left;">${cleanName}</h4>
+ </div>
+ <p style="font-size:12px; color:#666; margin-bottom:12px; text-align:left; line-height:1.4; word-break:keep-all;">${place.address}</p>
+
+ <!-- 외국인 맞춤 정보 (영어 이름 + 특징 뱃지) -->
+ <div style="text-align: left; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #eee;">
+ <span style="font-size: 13px; font-weight: bold; color: #4A55A2;">🍽️ ${result.food_name}</span>
+ <span style="font-size: 12px; color: #888; margin-left: 4px;">(${result.food_name_en})</span>
+ ${badgesHtml}
+ </div>
+
+ <!-- 뚜벅이 여행객 타겟: 거리 정보 -->
+ <div style="display: flex; justify-content: flex-start; gap: 10px; margin-bottom: 10px; font-size: 13px; font-weight: bold;">
+ <span style="color: #4A55A2; background: #e6e8f4; padding: 4px 8px; border-radius: 5px;">🚶‍♂️ ${place.distance_km}km</span>
+ </div>
+
+ <!-- 🌟 파이썬이 블로그 분석해서 뽑아준 해시태그 리뷰 요약 -->
+ <div style="background-color: #f8f9fa; border-radius: 6px; padding: 8px; margin-bottom: 15px; text-align: left;">
+    <span style="font-size: 11px; color: #555; display: block; margin-bottom: 3px;">💬 AI 리뷰 요약</span>
+    <span style="font-size: 12px; color: #222; font-weight: bold;">${place.highlight}</span>
+ </div>
+
+ <!-- 실제 네이버 지도 앱으로 넘어가는 버튼 -->
+ <a href="https://map.naver.com/v5/search/${encodeURIComponent(exactSearchQuery)}" target="_blank"
+ style="display:block; padding:10px 15px; background-color:#03c75a; color:white; text-decoration:none; border-radius:8px; font-weight:bold; font-size:14px;">
+ 🔍 영업시간 및 상세 리뷰 보기
+ </a>
+ </div>
+ `;
+ // 만들어진 HTML을 팝업창에 주입하고, 클릭한 마커 위에 띄워줌!
+ activeInfoWindow.setContent(contentHtml);
+ activeInfoWindow.open(map, rMarker);
+ map.panTo(position); // 화면 중심을 클릭한 마커로 슥~ 이동시켜줌
+ });
+ 
+ restaurantMarkers.push(rMarker); // 관리 목록에 등록
+ });
+ });
+
+ // 모든 마커가 다 찍히고 난 뒤, 자동으로 대망의 '1위' 맛집으로 화면을 부드럽게 이동시킴 (0.5초 딜레이)
+ setTimeout(() => {
+ if (restaurantMarkers.length > 0) {
+ map.panTo(restaurantMarkers[0].getPosition());
+ }
+ }, 500);
+
+ } else {
+ // 파이썬이 확신도 50%를 못 넘겨서 실패했을 때 뜨는 경고
+ alert(`⚠️ AI가 음식을 알아보지 못했어요.\n이유: ${result.message}`);
+ }
+ } catch (error) {
+ // 서버가 꺼져있거나 인터넷 끊겼을 때 뜨는 에러
+ console.error(error);
+ alert("🚨 서버 통신 에러! 백엔드 터미널 창(127.0.0.1:8000)이 켜져 있는지 확인해주세요.");
+ } finally {
+ // 통신이 끝나면 버튼 이름 원래대로 복구
+ submitBtn.innerText = "AI 분석 & 맛집 찾기"; 
+ }
+ }
+ </script>
+</body>
+</html>
